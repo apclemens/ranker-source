@@ -5,6 +5,9 @@
         {{pairsDone}} / {{(items.length * (items.length-1) / 2)}}
 
         <div v-if="!done">
+            <div v-if="!disableSkip" class="compare" id="dontCare" v-on:click="deferRun([itemA, itemB])">
+                Don't care
+            </div>
         <div class="compare" id="itemA" v-on:click="addRun([itemA, itemB])">
             {{items[itemA]}}
         </div>
@@ -17,7 +20,7 @@
         {{runs}}<br>
         <div v-if="done">
             <ul>
-                <li v-for="o in order">
+                <li v-for="(o, index) in order" v-bind:key="index">
                     {{items[o]}}
                 </li>
             </ul>
@@ -29,7 +32,7 @@
 
 export default {
     name: 'SortForm',
-    props: ['items'],
+    props: ['items', 'sortMethod'],
     data() {
         return {
             itemA: '',
@@ -39,6 +42,8 @@ export default {
             runs: [],
             done: false,
             pairsDone: 0,
+            lastSkipped: [-1, -1],
+            disableSkip: false,
         }
     },
     mounted() {
@@ -47,6 +52,19 @@ export default {
                 this.pairs.push([i, j])
             }
         }
+
+        var ths = this;
+
+        document.addEventListener('keypress', function(event) {
+            if (event.key == 'ArrowLeft') {
+                ths.addRun([ths.itemA, ths.itemB]);
+            } else if (event.key == 'ArrowRight') {
+                ths.addRun([ths.itemB, ths.itemA]);
+            } else if (event.key == 'ArrowUp') {
+                ths.deferRun([ths.itemA, ths.itemB]);
+            }
+        })
+
         this.pairs = shuffle(this.pairs);
         this.order = [...Array(this.items.length).keys()];
         this.askPreference();
@@ -64,7 +82,11 @@ export default {
                 this.done = true;
                 return;
             }
-			var currentPair = shuffle(this.pairs.pop());
+            var currentPair = shuffle(this.pairs.pop());
+            if ((currentPair[0] == this.lastSkipped[0] && currentPair[1] == this.lastSkipped[1]) ||
+                (currentPair[0] == this.lastSkipped[1] && currentPair[1] == this.lastSkipped[0])) {
+                this.disableSkip = true;
+            }
             this.pairsDone ++;
             if (trailPairs(currentPair[0], currentPair[1], this.runs)) return this.askPreference();
             if (trailPairs(currentPair[1], currentPair[0], this.runs)) return this.askPreference();
@@ -88,8 +110,19 @@ export default {
                 this.runs.splice(toRemove[j],1);
             }
             this.runs.push(newRun)
+            this.lastSkipped = [-1, -1];
+            this.disableSkip = false;
             this.askPreference();
-        }
+        },
+        deferRun: function(run) {
+            this.pairs.unshift(run);
+            this.pairsDone --;
+            if (this.lastSkipped[0] == -1) {
+                this.lastSkipped[0] = run[0];
+                this.lastSkipped[1] = run[1];
+            }
+            this.askPreference();
+        },
     },
 }
 
@@ -137,5 +170,10 @@ function trailPairs(start, end, runs) {
 .remove {
     width: 50px;
     display: block;
+}
+#dontCare {
+    display: block;
+    width: 1004px;
+    height: 50px;
 }
 </style>

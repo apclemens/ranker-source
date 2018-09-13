@@ -16,6 +16,7 @@
         </div>
         <SortForm v-if="sorting"
               v-bind:items="itemList.split('\n')"
+              v-bind:sortMethod="sortMethod"
         />
     </div>
 </template>
